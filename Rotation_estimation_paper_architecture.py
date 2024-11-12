@@ -94,7 +94,7 @@ class ExtremeRotationEstimator(nn.Module):
         self.rotation_query_projection = nn.Linear(4, embed_dim * 98)
         # Final MLP for quaternion output
         self.mlp = nn.Sequential(
-            nn.Linear(128, 64),#embed_dim
+            nn.Linear(128*98, 64),#embed_dim
             nn.ReLU(),
             nn.Linear(64, 4)  # Output size 4 for quaternion representation
         )
@@ -135,9 +135,11 @@ class ExtremeRotationEstimator(nn.Module):
         decoder2_layer1 = self.Decoder_2_layer__1(rotation_query,decoder1_layer2)#rotation as query and decoder1_layer2 as key and value
         decoder2_layer2 = self.Decoder_2_layer__2(rotation_query,decoder2_layer1)
 
+        mlp_input = decoder2_layer2.view(decoder2_layer2.size(0), -1)
 
         # MLP to predict quaternion
-        quaternion = self.mlp(decoder2_layer2)#T_bar.mean(dim=1)
+        quaternion = self.mlp(mlp_input)#T_bar.mean(dim=1)
+
 
         return quaternion
 
