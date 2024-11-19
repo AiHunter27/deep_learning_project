@@ -4,6 +4,25 @@ import torch.nn.functional as F
 from torch.nn import TransformerEncoder, TransformerEncoderLayer, TransformerDecoder, TransformerDecoderLayer
 import segmentation_models_pytorch as smp
 
+
+
+
+import torch
+import torch.nn as nn
+
+class QuaternionLoss(nn.Module):
+    def __init__(self):
+        super(QuaternionLoss, self).__init__()
+
+    def forward(self, predicted, ground_truth):
+
+        predicted_normalized = predicted / torch.norm(predicted, dim=1, keepdim=True)
+        
+        loss = torch.norm(ground_truth - predicted_normalized, dim=1)
+        
+        return loss.mean()
+
+
 class TransformerDecoderBlock(nn.Module):#cross attention implementation
     
     def __init__(self, d_model=128, nhead=4, dim_feedforward=512, dropout=0.1):#dim_feedforward =2048
@@ -91,7 +110,7 @@ class ExtremeRotationEstimator(nn.Module):
         #apprach1
         #self.rotation_query_projection = nn.Linear(4, 128)
         #Approach 2
-        self.rotation_query_projection = nn.Linear(4, embed_dim * 98)
+        self.rotation_query_projection = nn.Linear(3, embed_dim * 98)
         # Final MLP for quaternion output
         self.mlp = nn.Sequential(
             nn.Linear(128*98, 64),#embed_dim
@@ -99,7 +118,16 @@ class ExtremeRotationEstimator(nn.Module):
             nn.Linear(64, 4)  # Output size 4 for quaternion representation
         )
 
-    def forward(self, img1, img2,mask_input):
+    def create_cross_attention_mask(self,sequence_length):
+        mask = torch.zeros((sequence_length, sequence_length))
+        half = sequence_length // 2
+        mask[:half, :half] = float('-inf')  
+        mask[half:, half:] = float('-inf')  
+
+        return mask
+
+
+    def forward(self, img1, img2,rotation_query,mask_input=None):
         emb1 = self.embedding_net(img1)
         emb2 = self.embedding_net(img2)
 
@@ -114,9 +142,14 @@ class ExtremeRotationEstimator(nn.Module):
 
         combined_embeddings = torch.cat((decoder0_L_layer2, decoder0_R_layer2), dim=1)
 
-        
-        cross_attention_output = self.transformer_encoder(combined_embeddings,mask=mask_input)
+        if mask_input is None:
+            sequence_length = combined_embeddings.size(1)  # 2 * H * W
+            mask_input = self.create_cross_attention_mask(sequence_length).to(combined_embeddings.device)
 
+        
+        cross_attention_output = self.transformer_encoder(combined_embeddings,mask=mask_input)# combined_embeddings.permute(1, 0, 2)
+
+        cross_attention_output = cross_attention_output.permute(1, 0, 2)
         # First Transformer Decoder for rotation query
 
         #approach 1
