@@ -10,7 +10,7 @@ from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import glob
-
+from PIL import Image
 
 
 class SphericalImageRotationDataset(Dataset):
@@ -36,8 +36,8 @@ class SphericalImageRotationDataset(Dataset):
         # Load and preprocess images
         img1 = Image.open(img1_path).convert("RGB")
         img2 = Image.open(img2_path).convert("RGB")
-        img1 = self.transform(img1)
-        img2 = self.transform(img2)
+        # img1 = self.transform(img1)
+        # img2 = self.transform(img2)
         
         return img1, img2, torch.tensor(label)
 
@@ -143,11 +143,38 @@ def generate_pairs_with_labels(image_paths):
             theta, u = vector_from_rotation(R_relative)
             rotation_vector = theta * np.transpose(u)
             
-            pairs.append((image_paths[i][17:-4], image_paths[j][17:-4]))
+            pairs.append((image_paths[i], image_paths[j]))
             labels.append(rotation_vector.astype(np.float32))
     
     return pairs, labels
 
+class SphericalImageRotationDataset(Dataset):
+    """
+    Custom PyTorch Dataset for loading spherical image pairs and their relative rotation vectors.
+    """
+    def __init__(self, pairs, labels, transform=None):
+        self.pairs = pairs
+        self.labels = labels
+        # self.transform = transform or Compose([
+        #     Resize((256, 256)),  # Adjust size as required by your model
+        #     ToTensor(),
+        #     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize for ImageNet weights
+        # ])
+    
+    def __len__(self):
+        return len(self.pairs)
+    
+    def __getitem__(self, idx):
+        img1_path, img2_path = self.pairs[idx]
+        label = self.labels[idx]
+        
+        # Load and preprocess images
+        img1 = Image.open(img1_path).convert("RGB")
+        img2 = Image.open(img2_path).convert("RGB")
+        # img1 = self.transform(img1)
+        # img2 = self.transform(img2)
+        
+        return img1, img2, torch.tensor(label)
 
 image_dir = "SphericalImages2"  # Directory containing your images
 image_paths = glob.glob(os.path.join(image_dir, "*.png"))
