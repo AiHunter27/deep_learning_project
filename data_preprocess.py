@@ -148,33 +148,57 @@ def generate_pairs_with_labels(image_paths):
     
     return pairs, labels
 
-class SphericalImageRotationDataset(Dataset):
-    """
-    Custom PyTorch Dataset for loading spherical image pairs and their relative rotation vectors.
-    """
-    def __init__(self, pairs, labels, transform=None):
-        self.pairs = pairs
-        self.labels = labels
-        # self.transform = transform or Compose([
-        #     Resize((256, 256)),  # Adjust size as required by your model
-        #     ToTensor(),
-        #     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize for ImageNet weights
-        # ])
+# class SphericalImageRotationDataset(Dataset):
+#     """
+#     Custom PyTorch Dataset for loading spherical image pairs and their relative rotation vectors.
+#     """
+#     def __init__(self, pairs, labels, transform=None):
+#         self.pairs = pairs
+#         self.labels = labels
+#         # self.transform = transform or Compose([
+#         #     Resize((256, 256)),  # Adjust size as required by your model
+#         #     ToTensor(),
+#         #     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize for ImageNet weights
+#         # ])
     
-    def __len__(self):
-        return len(self.pairs)
+#     def __len__(self):
+#         return len(self.pairs)
     
-    def __getitem__(self, idx):
-        img1_path, img2_path = self.pairs[idx]
-        label = self.labels[idx]
+#     def __getitem__(self, idx):
+#         img1_path, img2_path = self.pairs[idx]
+#         label = self.labels[idx]
         
-        # Load and preprocess images
-        img1 = Image.open(img1_path).convert("RGB")
-        img2 = Image.open(img2_path).convert("RGB")
-        # img1 = self.transform(img1)
-        # img2 = self.transform(img2)
+#         # Load and preprocess images
+#         img1 = Image.open(img1_path).convert("RGB")
+#         img2 = Image.open(img2_path).convert("RGB")
+#         # img1 = self.transform(img1)
+#         # img2 = self.transform(img2)
         
-        return img1, img2, torch.tensor(label)
+#         return img1, img2, torch.tensor(label)
+
+def plot_image_pair_with_label(img1_path, img2_path, label):
+    """
+    Plot an image pair with the corresponding rotation vector label.
+    """
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    
+    # Load and plot the first image
+    img1 = Image.open(img1_path).convert("RGB")
+    axs[0].imshow(img1)
+    axs[0].axis('off')
+    axs[0].set_title(f"Image 1: {os.path.basename(img1_path)}")
+    
+    # Load and plot the second image
+    img2 = Image.open(img2_path).convert("RGB")
+    axs[1].imshow(img2)
+    axs[1].axis('off')
+    axs[1].set_title(f"Image 2: {os.path.basename(img2_path)}")
+    
+    # Show the label below the plots
+    plt.suptitle(f"Label (Rotation Vector): {label}", y=0.05, fontsize=10)
+    plt.tight_layout()
+    plt.show()
+
 
 image_dir = "SphericalImages2"  # Directory containing your images
 image_paths = glob.glob(os.path.join(image_dir, "*.png"))
