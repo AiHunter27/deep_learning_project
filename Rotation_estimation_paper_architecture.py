@@ -123,7 +123,7 @@ class ExtremeRotationEstimator(nn.Module):
         self.mlp = nn.Sequential(
             nn.Linear(embed_dim*sequence_length, 64),#embed_dim
             nn.ReLU(),
-            nn.Linear(64, 4)  # Output size 4 for quaternion representation
+            nn.Linear(64, 3)  # Output size 4 for quaternion representation
         )
 
     def create_cross_attention_mask(self,sequence_length):
@@ -177,8 +177,8 @@ class ExtremeRotationEstimator(nn.Module):
         rotation_query_projected = rotation_query_projected.unsqueeze(1).expand(-1, self.sequence_length, -1)
 
 
-        print(f"Shape of cross_attention_output: {cross_attention_output.shape}")  # Expected: (batch_size, 1176, 128)
-        print(f"Shape of rotation_query_projected: {rotation_query_projected.shape}")  
+        # print(f"Shape of cross_attention_output: {cross_attention_output.shape}")  # Expected: (batch_size, 1176, 128)
+        # print(f"Shape of rotation_query_projected: {rotation_query_projected.shape}")  
 
 
 
