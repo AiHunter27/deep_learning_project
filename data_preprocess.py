@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
+from torchvision.transforms import Compose, ToTensor, Normalize,Pad
 from scipy.io import loadmat
 from tqdm import tqdm
 import numpy as np
@@ -11,6 +12,7 @@ from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import glob
 from PIL import Image
+from torchvision.transforms.functional import pad
 
 
 class SphericalImageRotationDataset(Dataset):
@@ -20,11 +22,18 @@ class SphericalImageRotationDataset(Dataset):
     def __init__(self, pairs, labels, transform=None):
         self.pairs = pairs
         self.labels = labels
-        # self.transform = transform or Compose([
-        #     Resize((256, 256)),  # Adjust size as required by your model
-        #     ToTensor(),
-        #     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize for ImageNet weights
-        # ])
+        self.transform = transform or Compose([
+            Pad((10, 8, 11, 9)),#Resize((256, 256)),  # Adjust size as required by your model
+            ToTensor(),
+            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize for ImageNet weights
+        ])
+
+    # def pad_to_even(self, img):
+    #     width, height = img.size
+    #     new_width = width if width % 2 == 0 else width + 1
+    #     new_height = height if height % 2 == 0 else height + 1
+    #     padding = (0, 0, new_width - width, new_height - height)  # (left, top, right, bottom)
+    #     return pad(img, padding)
     
     def __len__(self):
         return len(self.pairs)
@@ -36,8 +45,8 @@ class SphericalImageRotationDataset(Dataset):
         # Load and preprocess images
         img1 = Image.open(img1_path).convert("RGB")
         img2 = Image.open(img2_path).convert("RGB")
-        # img1 = self.transform(img1)
-        # img2 = self.transform(img2)
+        img1 = self.transform(img1)
+        img2 = self.transform(img2)
         
         return img1, img2, torch.tensor(label)
 

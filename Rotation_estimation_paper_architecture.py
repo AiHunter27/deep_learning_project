@@ -79,10 +79,12 @@ class SiameseUNet(nn.Module):
 
         
 class ExtremeRotationEstimator(nn.Module):
-    def __init__(self, embed_dim=128, num_heads=4, num_layers=2):
+    def __init__(self, embed_dim=128, num_heads=4, num_layers=2,sequence_length=1176):
         super(ExtremeRotationEstimator, self).__init__()
         # Single shared instance of SiameseUNet
         self.embedding_net = SiameseUNet(encoder_name='resnet34', encoder_weights='imagenet')
+        self.embed_dim = embed_dim
+        self.sequence_length = sequence_length
 
         # Transformer Encoder for cross-attention computation
         self.Decoder_0_L_layer__1 = TransformerDecoderBlock(d_model=128, nhead=4)
@@ -110,10 +112,16 @@ class ExtremeRotationEstimator(nn.Module):
         #apprach1
         #self.rotation_query_projection = nn.Linear(4, 128)
         #Approach 2
-        self.rotation_query_projection = nn.Linear(3, embed_dim * 98)
+        # self.rotation_query_projection = nn.Linear(3, embed_dim * sequence_length)
+        self.rotation_query_projection = nn.Sequential(
+            nn.Linear(3, embed_dim), 
+            nn.ReLU(),
+            nn.Linear(embed_dim, embed_dim) 
+        )
+
         # Final MLP for quaternion output
         self.mlp = nn.Sequential(
-            nn.Linear(128*98, 64),#embed_dim
+            nn.Linear(embed_dim*sequence_length, 64),#embed_dim
             nn.ReLU(),
             nn.Linear(64, 4)  # Output size 4 for quaternion representation
         )
@@ -131,6 +139,7 @@ class ExtremeRotationEstimator(nn.Module):
         emb1 = self.embedding_net(img1)
         emb2 = self.embedding_net(img2)
 
+
         #cross attention decoder 0
         decoder0_L_layer1 = self.Decoder_0_L_layer__1(emb2,emb1)
         decoder0_L_layer2 = self.Decoder_0_L_layer__2(decoder0_L_layer1,emb1)
@@ -146,6 +155,9 @@ class ExtremeRotationEstimator(nn.Module):
             sequence_length = combined_embeddings.size(1)  # 2 * H * W
             mask_input = self.create_cross_attention_mask(sequence_length).to(combined_embeddings.device)
 
+
+
+        combined_embeddings = combined_embeddings.permute(1, 0, 2)
         
         cross_attention_output = self.transformer_encoder(combined_embeddings,mask=mask_input)# combined_embeddings.permute(1, 0, 2)
 
@@ -158,15 +170,25 @@ class ExtremeRotationEstimator(nn.Module):
         # rotation_query = rotation_query.expand(-1, cross_attention_output.size(1), -1)
 
         #approach 2
-        rotation_query = self.rotation_query_projection(rotation_query)  # Shape: (batch_size, 98 * embed_dim)
-        rotation_query = rotation_query.view(-1, 98, 128)
-        
-        
-        decoder1_layer1= self.Decoder_1_layer__1(cross_attention_output,rotation_query)#encoder out as query and rotation as key and value
-        decoder1_layer2 = self.Decoder_1_layer__2(decoder1_layer1,rotation_query)
 
-        decoder2_layer1 = self.Decoder_2_layer__1(rotation_query,decoder1_layer2)#rotation as query and decoder1_layer2 as key and value
-        decoder2_layer2 = self.Decoder_2_layer__2(rotation_query,decoder2_layer1)
+
+        rotation_query_projected = self.rotation_query_projection(rotation_query)  # Shape: (batch_size, 98 * embed_dim)
+        # rotation_query_projected = rotation_query_projected.view(-1, self.sequence_length, self.embed_dim)
+        rotation_query_projected = rotation_query_projected.unsqueeze(1).expand(-1, self.sequence_length, -1)
+
+
+        print(f"Shape of cross_attention_output: {cross_attention_output.shape}")  # Expected: (batch_size, 1176, 128)
+        print(f"Shape of rotation_query_projected: {rotation_query_projected.shape}")  
+
+
+
+        
+        
+        decoder1_layer1= self.Decoder_1_layer__1(cross_attention_output,rotation_query_projected)#encoder out as query and rotation as key and value
+        decoder1_layer2 = self.Decoder_1_layer__2(decoder1_layer1,rotation_query_projected)
+
+        decoder2_layer1 = self.Decoder_2_layer__1(rotation_query_projected,decoder1_layer2)#rotation as query and decoder1_layer2 as key and value
+        decoder2_layer2 = self.Decoder_2_layer__2(rotation_query_projected,decoder2_layer1)
 
         mlp_input = decoder2_layer2.view(decoder2_layer2.size(0), -1)
 
