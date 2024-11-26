@@ -17,8 +17,17 @@ class QuaternionLoss(nn.Module):
     def forward(self, predicted, ground_truth):
 
         predicted_normalized = predicted / torch.norm(predicted, dim=1, keepdim=True)
+
+
+        # Compute both distances: to +q and -q
+        loss_positive = torch.norm(ground_truth - predicted_normalized, dim=1)
+        loss_negative = torch.norm(ground_truth + predicted_normalized, dim=1)
+
+        # Take the minimum distance for each quaternion pair
+        loss = torch.min(loss_positive, loss_negative)
+
         
-        loss = torch.norm(ground_truth - predicted_normalized, dim=1)
+        # loss = torch.norm(ground_truth - predicted_normalized, dim=1)
         
         return loss.mean()
 
