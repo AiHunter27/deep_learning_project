@@ -195,13 +195,13 @@ def plot_image_pair_with_label(img1_path, img2_path, label):
     img1 = Image.open(img1_path).convert("RGB")
     axs[0].imshow(img1)
     axs[0].axis('off')
-    axs[0].set_title(f"Image 1: {os.path.basename(img1_path)}")
+    axs[0].set_title(f"Image 1: \n{os.path.basename(img1_path)}",fontsize=10,wrap=True)
     
     # Load and plot the second image
     img2 = Image.open(img2_path).convert("RGB")
     axs[1].imshow(img2)
     axs[1].axis('off')
-    axs[1].set_title(f"Image 2: {os.path.basename(img2_path)}")
+    axs[1].set_title(f"Image 2: \n{os.path.basename(img2_path)}",fontsize=10,wrap=True)
     
     # Show the label below the plots
     plt.suptitle(f"Label (Rotation Vector): {label}", y=0.05, fontsize=10)
