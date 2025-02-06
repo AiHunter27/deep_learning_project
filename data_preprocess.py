@@ -122,30 +122,66 @@ def vector_from_rotation(R):
 
     theta = np.degrees(theta)
     return theta, uu
-def generate_pairs_with_labels(image_paths):
-    """
-    Generate all possible pairs of images and their relative rotation vector labels.
-    """
+# def generate_pairs_with_labels(image_paths):
+#     """
+#     Generate all possible pairs of images and their relative rotation vector labels.
+#     """
+#     pairs = []
+#     labels = []
+    
+#     for i in range(len(image_paths)):
+#         for j in range(i + 1, len(image_paths)):
+#             # img1_path = image_paths[i]
+#             # img2_path = image_paths[j]
+#             filename = image_paths[i][17:-4]+"_"+image_paths[j][17:-4]
+#             f1_label, f2_label = extract_labels_from_filename(filename)
+          
+#             # f1_label = extract_labels_from_filename(img1_path)[0]
+#             # f2_label = extract_labels_from_filename(img2_path)[1]
+            
+#             if f1_label is None or f2_label is None:
+#                 continue  # Skip invalid filenames
+            
+#             # Create transformation matrices
+#             T1 = create_transformation_matrix(f1_label)
+#             T2 = create_transformation_matrix(f2_label)
+#             # print(T1)
+#             # Compute relative rotation
+#             T_relative = np.dot(np.linalg.inv(T1), T2)
+#             R_relative = T_relative[:3, :3]
+#             theta, u = vector_from_rotation(R_relative)
+#             rotation_vector = theta * np.transpose(u)
+            
+#             pairs.append((image_paths[i], image_paths[j]))
+#             labels.append(rotation_vector.astype(np.float32))
+    
+#     return pairs, labels
+def generate_pairs_with_labels(image_paths, max_distance=20.0, min_distance=2.0):
+
     pairs = []
     labels = []
     
     for i in range(len(image_paths)):
         for j in range(i + 1, len(image_paths)):
-            # img1_path = image_paths[i]
-            # img2_path = image_paths[j]
             filename = image_paths[i][17:-4]+"_"+image_paths[j][17:-4]
             f1_label, f2_label = extract_labels_from_filename(filename)
-          
-            # f1_label = extract_labels_from_filename(img1_path)[0]
-            # f2_label = extract_labels_from_filename(img2_path)[1]
             
             if f1_label is None or f2_label is None:
                 continue  # Skip invalid filenames
             
+            # Get positions
+            pos1 = np.array([f1_label[0], f1_label[1], f1_label[2]])
+            pos2 = np.array([f2_label[0], f2_label[1], f2_label[2]])
+            
+            # Distance check only
+            distance = np.linalg.norm(pos2 - pos1)
+            if distance > max_distance or distance < min_distance:
+                continue
+            
             # Create transformation matrices
             T1 = create_transformation_matrix(f1_label)
             T2 = create_transformation_matrix(f2_label)
-            # print(T1)
+            
             # Compute relative rotation
             T_relative = np.dot(np.linalg.inv(T1), T2)
             R_relative = T_relative[:3, :3]
@@ -156,7 +192,6 @@ def generate_pairs_with_labels(image_paths):
             labels.append(rotation_vector.astype(np.float32))
     
     return pairs, labels
-
 # class SphericalImageRotationDataset(Dataset):
 #     """
 #     Custom PyTorch Dataset for loading spherical image pairs and their relative rotation vectors.
@@ -208,12 +243,3 @@ def plot_image_pair_with_label(img1_path, img2_path, label):
     plt.tight_layout()
     plt.show()
 
-
-image_dir = "SphericalImages2"  # Directory containing your images
-image_paths = glob.glob(os.path.join(image_dir, "*.png"))
-
-# Step 3: Generate pairs and labels
-pairs, labels = generate_pairs_with_labels(image_paths)
-
-# Step 4: Create the dataset
-dataset = SphericalImageRotationDataset(pairs, labels)
